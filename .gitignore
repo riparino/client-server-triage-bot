@@ -192,3 +192,18 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# PowerShell
+*.ps1xml
+profile.ps1
+*_profile.ps1
+
+# Configuration files with sensitive data
+config/tenants.json
+config/secrets.json
+*.secret
+*.credentials
+
+# Logs
+logs/
+*.log

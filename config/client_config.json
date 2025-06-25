@@ -1,0 +1,33 @@
+{
+  "client": {
+    "name": "Azure Sentinel Triage Bot Client",
+    "version": "1.0.0",
+    "default_server_url": "http://localhost:5000",
+    "connection_timeout_seconds": 30,
+    "command_history_size": 100
+  },
+  "display": {
+    "show_timestamps": true,
+    "max_description_length": 100,
+    "incident_summary_format": "table",
+    "colors": {
+      "high_severity": "Red",
+      "medium_severity": "Yellow", 
+      "low_severity": "Green",
+      "info_severity": "Cyan"
+    }
+  },
+  "shortcuts": {
+    "h": "help",
+    "q": "quit",
+    "t": "tenants",
+    "i": "incidents",
+    "s": "status"
+  },
+  "features": {
+    "enable_chat_suggestions": true,
+    "enable_command_history": true,
+    "enable_tenant_switching": true,
+    "enable_incident_details": true
+  }
+}
