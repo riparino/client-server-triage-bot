@@ -1,0 +1,37 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    
+    "AZURE_TENANT_ID": "your_tenant_id",
+    "AZURE_SUBSCRIPTION_ID": "your_subscription_id",
+    
+    "AZURE_CLIENT_ID": "your_app_registration_client_id",
+    "AZURE_CLIENT_SECRET": "your_app_registration_client_secret",
+    
+    "OPENAI_API_KEY": "your_openai_api_key",
+    "OPENAI_MODEL": "gpt-4",
+    
+    "USE_AZURE_OPENAI": "false",
+    "OPENAI_API_VERSION": "2023-05-15",
+    "OPENAI_ENDPOINT": "https://your-openai-resource.openai.azure.com/",
+    "AZURE_OPENAI_DEPLOYMENT": "your_deployment_name",
+    
+    "GRAPH_API_ENDPOINT": "https://graph.microsoft.com/v1.0",
+    "SENTINEL_API_VERSION": "2022-01-01-preview",
+    "DEFENDER_API_VERSION": "2021-10-01",
+    
+    "USE_MANAGED_IDENTITY": "true",
+    
+    "USE_EASY_AUTH": "true",
+    "REQUIRED_SCOPES": "api://your-app-id/incidents.read,api://your-app-id/metrics.read",
+    
+    "MULTI_TENANT_ENABLED": "true",
+    "AZURE_HOME_TENANT_ID": "your-home-tenant-id",
+    "AZURE_MANAGED_TENANTS": "managed-tenant-1,managed-tenant-2",
+    
+    "USE_KEY_VAULT": "true",
+    "KEY_VAULT_NAME": "kv-triage-bot"
+  }
+}

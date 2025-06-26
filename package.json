@@ -1,0 +1,26 @@
+{
+  "name": "client-server-triage-bot",
+  "version": "1.0.0",
+  "description": "A client-server architecture for an LLM powered bot that allows for Azure/Azure Sentinel/Defender incident triage and security metrics gathering.",
+  "main": "index.js",
+  "scripts": {
+    "cli-install": "cd cli && pip install -r requirements.txt",
+    "mcp-install": "cd mcp-server && pip install -r requirements.txt",
+    "install-all": "npm run cli-install && npm run mcp-install",
+    "cli": "cd cli && python triage_bot.py",
+    "mcp-dev": "cd mcp-server && func start"
+  },
+  "keywords": [
+    "azure",
+    "security",
+    "triage",
+    "bot",
+    "sentinel",
+    "defender"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

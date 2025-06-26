@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Test Multi-Tenant Authentication",
+			"type": "shell",
+			"command": "echo \"Running multi-tenant authentication test...\" && cd mcp-server && python -c \"import azure_auth; print('Home Tenant ID:', azure_auth.get_home_tenant_id()); print('Managed Tenants:', azure_auth.get_managed_tenant_ids()); print('Multi-Tenant Enabled:', azure_auth.is_multi_tenant_enabled())\"",
+			"group": "test",
+			"problemMatcher": []
+		}
+	]
+}
