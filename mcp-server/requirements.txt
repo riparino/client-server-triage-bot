@@ -1,7 +1,7 @@
 # Azure Function MCP Server Requirements
 azure-functions==1.17.0
 azure-core==1.28.0
-azure-identity==1.14.0  # Make sure we have the version with robust OBO support
+azure-identity==1.16.1  # Make sure we have the version with robust OBO support
 azure-mgmt-securityinsight==1.0.0
 azure-mgmt-security==3.0.0
 azure-keyvault-secrets==4.7.0
@@ -9,14 +9,14 @@ azure-keyvault-certificates==4.7.0
 microsoft-identity-web-python==0.16.0  # Microsoft Identity Web for Python
 msal==1.25.0  # Microsoft Authentication Library
 pyjwt==2.7.0
-cryptography==41.0.3
+cryptography==44.0.1
 azure-mgmt-resource==23.0.1
 azure-storage-blob==12.16.0
 azure-mgmt-monitor==6.0.2
 azure-mgmt-loganalytics==13.0.0
 azure-graphrbac==0.61.1
 azure-mgmt-authorization==3.0.0
-requests==2.31.0
+requests==2.32.4
 pydantic==2.5.2
 python-dotenv==1.0.0
 openai==1.3.5
