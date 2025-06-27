@@ -29,7 +29,7 @@
     
     "MULTI_TENANT_ENABLED": "true",
     "AZURE_HOME_TENANT_ID": "your-home-tenant-id",
-    "AZURE_MANAGED_TENANTS": "managed-tenant-1,managed-tenant-2",
+    "ENABLE_AUTO_TENANT_DISCOVERY": "true",
     
     "USE_KEY_VAULT": "true",
     "KEY_VAULT_NAME": "kv-triage-bot"

@@ -47,7 +47,7 @@ def get_key_vault_client() -> Optional[Any]:
             key_vault_url = f"https://{KEY_VAULT_NAME}.vault.azure.net"
             return SecretClient(vault_url=key_vault_url, credential=credential)
         except Exception as e:
-            logging.error(f"Failed to create Key Vault client with fallback: {str(e)}")
+            logging.error(f"Failed to create Key Vault client: {str(e)}")
             return None
 
 def get_secret(secret_name: str, default_value: str = "") -> str:

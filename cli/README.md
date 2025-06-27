@@ -1,16 +1,10 @@
-# Client Documentation
+# CLI Client
 
-This document provides comprehensive information about the CLI client component of the triage bot system, including installation, configuration, and usage instructions.
+This is the client component of the Triage Bot system. For comprehensive documentation, please refer to:
 
-## Table of Contents
-- [Installation](#installation)
-  - [Prerequisites](#prerequisites)
-  - [Setup](#setup)
-  - [Configuration](#configuration)
-- [Usage Instructions](#usage-instructions)
-  - [Available Commands](#available-commands)
-  - [Examples](#examples)
-- [Troubleshooting](#troubleshooting)
+- [Client Documentation](../docs/CLIENT.md)
+- [Authentication Guide](../docs/AUTHENTICATION.md)
+- [Main Project README](../README.md)
 
 ---
 

@@ -1,18 +1,10 @@
-# Server Documentation
+# MCP Server
 
-This document provides comprehensive information about the MCP server component of the triage bot system, including authentication setup and deployment instructions.
+This is the server component of the Triage Bot system. For comprehensive documentation, please refer to:
 
-## Table of Contents
-- [Authentication Setup](#authentication-setup)
-  - [Overview](#overview)
-  - [Setup Steps](#setup-steps)
-  - [How Authentication Works](#how-authentication-works)
-  - [Troubleshooting](#troubleshooting)
-- [Deployment Guide](#deployment-guide)
-  - [Prerequisites](#prerequisites)
-  - [Deployment Steps](#deployment-steps)
-  - [Configuration](#configuration)
-  - [Monitoring and Maintenance](#monitoring-and-maintenance)
+- [Server Documentation](../docs/SERVER.md)
+- [Authentication Guide](../docs/AUTHENTICATION.md)
+- [Main Project README](../README.md)
 
 ---
 
@@ -70,24 +62,17 @@ AZURE_CLIENT_ID=your_app_registration_client_id
 AZURE_CLIENT_SECRET=your_client_secret
 ```
 
-### 5. Configure Access Control for Azure Resources
+### 5. Set Up Azure AD App Permissions
 
-Grant appropriate permissions to the managed identity or service principal for accessing Azure Sentinel and Defender:
+The Function App itself only needs permissions to perform token exchanges. The actual resource access will be done with the user's permissions through the OBO flow.
 
-```bash
-# Get the principal ID
-principalId=$(az ad sp show --id <your-app-client-id> --query id --output tsv)
+For Microsoft Graph access, make sure you've granted the following permissions to the App Registration:
 
-# Assign Security Reader role 
-az role assignment create --assignee $principalId \
-  --role "Security Reader" \
-  --scope /subscriptions/<subscription-id>
+- Microsoft Graph > API Permissions:
+  - User.Read (Delegated)
+  - Directory.Read.All (Application)
 
-# Assign Azure Sentinel Contributor role
-az role assignment create --assignee $principalId \
-  --role "Azure Sentinel Contributor" \
-  --scope /subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.OperationalInsights/workspaces/<workspace-name>
-```
+> **Note**: Unlike traditional service principal architectures, you don't need to assign Azure RBAC roles to the Function App's identity, as all resource access is done with the user's identity through the OBO flow. Users need appropriate roles assigned to their accounts directly, or via Azure Lighthouse delegations for cross-tenant access.
 
 ## How Authentication Works
 
@@ -98,8 +83,25 @@ az role assignment create --assignee $principalId \
 
 2. **MCP Server Flow**: 
    - MCP server validates the user's token
-   - If valid, MCP server uses its service principal to access Azure resources
-   - Service principal has appropriate RBAC permissions for Azure Sentinel/Defender
+   - If valid, MCP server uses the OBO flow to exchange the user's token for resource-specific tokens
+   - Resources are accessed with the user's identity and permissions, not as the Function App's identity
+
+## Multi-Tenant Access with Azure Lighthouse
+
+The MCP Server leverages the OAuth 2.0 On-Behalf-Of (OBO) flow to support multi-tenant scenarios through Azure Lighthouse:
+
+1. When a user has Azure Lighthouse delegations to other tenants, the Function App automatically inherits these delegations through the OBO flow
+2. No additional Lighthouse configuration is needed on the Function App itself
+3. The user's identity and permissions are preserved across tenant boundaries
+
+This allows security analysts to investigate incidents across multiple tenants without requiring separate authentication or configuration for each tenant.
+
+Key points about the multi-tenant implementation:
+- The Function App runs in the home tenant only
+- Cross-tenant access happens through the user's token via OBO flow
+- For same-tenant resources: Direct access using the user's permissions
+- For cross-tenant resources: Access via the user's Lighthouse delegations
+- The system dynamically detects which tenants the user has access to
 
 ## Troubleshooting
 

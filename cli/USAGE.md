@@ -1,4 +1,6 @@
-# CLI Usage Instructions
+# [DEPRECATED] CLI Usage Instructions
+
+⚠️ **NOTE: This document is deprecated. Please refer to the [Client Documentation](../docs/CLIENT.md) instead.**
 
 This document provides detailed instructions on how to use the Azure Security Incident Triage CLI tool.
 

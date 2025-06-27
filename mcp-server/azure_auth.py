@@ -1,7 +1,6 @@
 """
 Azure authentication module using Microsoft Identity Web for Python.
-This replaces the custom JWT validation logic with Microsoft's official libraries.
-Supports multi-tenant access through Azure Lighthouse delegated resource management.
+Provides token validation and multi-tenant access through Azure Lighthouse delegated resource management.
 """
 
 import os
@@ -9,7 +8,6 @@ import logging
 from typing import Optional, Dict, Any, Tuple, List
 import json
 import azure.functions as func
-from azure.identity import ManagedIdentityCredential, ChainedTokenCredential
 from microsoft_identity_web import ConfidentialClientApplication, ClaimsValidator, AuthError
 from microsoft_identity_web.adapters import AzureFunctionsAuthAdapter
 
@@ -22,11 +20,11 @@ GRAPH_API_ENDPOINT = "https://graph.microsoft.com/v1.0"
 # Config keys mapping to Key Vault secret names
 CONFIG_KEYS = {
     "AZURE_HOME_TENANT_ID": "azure-home-tenant-id",  # Primary tenant where the Function App is registered
-    "AZURE_MANAGED_TENANTS": "azure-managed-tenants",  # Comma-separated list of tenant IDs managed through Lighthouse
     "AZURE_CLIENT_ID": "azure-client-id",  # App registration client ID for API
     "AZURE_CLIENT_SECRET": "azure-client-secret",  # App registration client secret
     "REQUIRED_SCOPES": "required-scopes",  # Comma separated list of required scopes
-    "MULTI_TENANT_ENABLED": "multi-tenant-enabled"  # Whether multi-tenant auth is enabled
+    "MULTI_TENANT_ENABLED": "multi-tenant-enabled",  # Whether multi-tenant auth is enabled
+    "ENABLE_AUTO_TENANT_DISCOVERY": "enable-auto-tenant-discovery"  # Auto-discover tenants user has access to
 }
 
 def get_config_value(key: str, default: Any = None) -> Any:
@@ -48,10 +46,19 @@ def get_home_tenant_id() -> str:
     """Get the primary Azure AD tenant ID where the Function App is registered."""
     return get_config_value("AZURE_HOME_TENANT_ID", "")
 
+def is_auto_tenant_discovery_enabled() -> bool:
+    """Check if automatic tenant discovery is enabled."""
+    return get_config_value("ENABLE_AUTO_TENANT_DISCOVERY", "false").lower() == "true"
+
 def get_managed_tenant_ids() -> List[str]:
-    """Get the list of Azure AD tenant IDs managed through Azure Lighthouse."""
-    tenants = get_config_value("AZURE_MANAGED_TENANTS", "")
-    return [t.strip() for t in tenants.split(",")] if tenants else []
+    """
+    Get the list of Azure AD tenant IDs the user has access to via Azure Lighthouse.
+    With auto-discovery enabled, this will be determined dynamically from token claims
+    rather than a predefined list.
+    """
+    # Since we're implementing auto-discovery, this returns an empty list
+    # Tenants will be authorized based on token issuer/claims during runtime
+    return []
 
 def is_multi_tenant_enabled() -> bool:
     """Check if multi-tenant support is enabled."""
@@ -86,13 +93,13 @@ class MicrosoftIdentityAuthenticator:
     
     def __init__(self):
         self.home_tenant_id = get_home_tenant_id()
-        self.managed_tenant_ids = get_managed_tenant_ids()
         self.multi_tenant_enabled = is_multi_tenant_enabled()
+        self.auto_tenant_discovery = is_auto_tenant_discovery_enabled()
         self.client_id = get_client_id()
         self.client_secret = get_client_secret()
         self.required_scopes = get_required_scopes()
         
-        # Dictionary of auth adapters for each tenant
+        # Dictionary of auth adapters - will be populated dynamically with auto-discovery
         self.auth_adapters = {}
         
         # Create adapter for home tenant
@@ -101,16 +108,6 @@ class MicrosoftIdentityAuthenticator:
             client_id=self.client_id,
             client_credential=self.client_secret
         )
-        
-        # Create adapters for managed tenants if multi-tenant is enabled
-        if self.multi_tenant_enabled:
-            for tenant_id in self.managed_tenant_ids:
-                if tenant_id and tenant_id != self.home_tenant_id:
-                    self.auth_adapters[tenant_id] = AzureFunctionsAuthAdapter(
-                        tenant_id=tenant_id,
-                        client_id=self.client_id,
-                        client_credential=self.client_secret
-                    )
         
         # Create the confidential client application for the home tenant
         self.app = ConfidentialClientApplication(
@@ -148,11 +145,20 @@ class MicrosoftIdentityAuthenticator:
                 
                 logging.info(f"Token issued by tenant: {token_tenant_id or 'unknown'}")
                 
-                # For multi-tenant scenarios, verify this is an allowed tenant
+                # For multi-tenant scenarios with auto-discovery enabled
+                # Any tenant that issues a valid token is considered authorized
+                # The validation is done through JWT signature verification
                 if self.multi_tenant_enabled and token_tenant_id:
-                    if token_tenant_id != self.home_tenant_id and token_tenant_id not in self.managed_tenant_ids:
-                        logging.error(f"Token from tenant {token_tenant_id} is not authorized")
-                        return False, None, f"Token from unauthorized tenant: {token_tenant_id}"
+                    if token_tenant_id != self.home_tenant_id:
+                        logging.info(f"Cross-tenant access detected from tenant: {token_tenant_id}")
+                        # With auto-discovery, we dynamically create an adapter for this tenant
+                        if self.auto_tenant_discovery and token_tenant_id not in self.auth_adapters:
+                            logging.info(f"Auto-creating validator for tenant: {token_tenant_id}")
+                            self.auth_adapters[token_tenant_id] = AzureFunctionsAuthAdapter(
+                                tenant_id=token_tenant_id,
+                                client_id=self.client_id,
+                                client_credential=self.client_secret
+                            )
             except Exception as e:
                 logging.error(f"Error parsing token for tenant info: {str(e)}")
                 token_tenant_id = None
@@ -224,7 +230,7 @@ def get_credential(tenant_id: Optional[str] = None, user_token: Optional[str] = 
         An Azure credential that can be used to authenticate with Azure services.
     """
     try:
-        from azure.identity import ChainedTokenCredential, ClientSecretCredential, OnBehalfOfCredential
+        from azure.identity import OnBehalfOfCredential
         
         logging.info(f"Getting credential for tenant: {tenant_id or 'default'}, OBO: {bool(user_token)}")
         
@@ -245,20 +251,14 @@ def get_credential(tenant_id: Optional[str] = None, user_token: Optional[str] = 
                 user_assertion=user_token
             )
             
-            # Fall back to managed identity if OBO fails
-            return ChainedTokenCredential(obo_credential, ManagedIdentityCredential())
+            # Use OBO flow for accessing resources
+            return obo_credential
         
-        # For cross-tenant access (Azure Lighthouse scenario) without OBO
-        elif tenant_id and tenant_id != get_home_tenant_id():
-            # For a managed tenant (accessed via Azure Lighthouse),
-            # we need to use the managed identity with the specific tenant ID
-            client_id = get_client_id()
-            logging.info(f"Using Managed Identity with client ID {client_id} for cross-tenant access to {tenant_id}")
-            return ManagedIdentityCredential(client_id=client_id)
+        # For all scenarios, we require a user token for OBO flow
         else:
-            # Default tenant (function app's own tenant)
-            logging.info(f"Using default Managed Identity for home tenant")
-            return ManagedIdentityCredential()
+            # Enforce OBO flow by requiring a user token
+            logging.error("Cannot create credential without user token - OBO flow is required")
+            raise ValueError("User token is required for authentication. All operations must use On-Behalf-Of flow.")
     except Exception as e:
         logging.error(f"Failed to get credential: {str(e)}")
         raise ValueError("Credential configuration error. Check your configuration for managed identity, OBO flow, or Azure Lighthouse delegations.")

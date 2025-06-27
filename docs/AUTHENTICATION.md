@@ -114,7 +114,7 @@ Set up Easy Auth in your Function App for token validation:
 
 2. **Configure Function App Settings**:
    ```
-   az functionapp config appsettings set --name <function-app-name> --resource-group <resource-group> --settings "AZURE_HOME_TENANT_ID=<home-tenant-id>" "AZURE_CLIENT_ID=<api-app-id>" "AZURE_CLIENT_SECRET=<api-client-secret>" "REQUIRED_SCOPES=incidents.read,metrics.read" "MULTI_TENANT_ENABLED=true" "AZURE_MANAGED_TENANTS=<managed-tenant-1>,<managed-tenant-2>"
+   az functionapp config appsettings set --name <function-app-name> --resource-group <resource-group> --settings "AZURE_HOME_TENANT_ID=<home-tenant-id>" "AZURE_CLIENT_ID=<api-app-id>" "AZURE_CLIENT_SECRET=<api-client-secret>" "REQUIRED_SCOPES=incidents.read,metrics.read" "MULTI_TENANT_ENABLED=true" "ENABLE_AUTO_TENANT_DISCOVERY=true"
    ```
 
 ## OAuth 2.0 On-Behalf-Of Flow
@@ -150,11 +150,11 @@ def get_credential(tenant_id=None, user_token=None):
             user_assertion=user_token
         )
         
-        # Fall back to managed identity if OBO fails
-        return ChainedTokenCredential(obo_credential, ManagedIdentityCredential())
+        # Use OBO flow for resource access
+        return obo_credential
     else:
-        # Use managed identity for system operations
-        return ManagedIdentityCredential()
+        # Enforce OBO flow by requiring a user token
+        raise ValueError("User token is required for authentication. All operations must use On-Behalf-Of flow.")
 
 def get_graph_token(tenant_id=None, user_token=None):
     credential = get_credential(tenant_id, user_token)
@@ -187,7 +187,13 @@ For environments involving users accessing resources across multiple tenants thr
    ```
    "MULTI_TENANT_ENABLED": "true"
    "AZURE_HOME_TENANT_ID": "<your-home-tenant-id>"
-   "AZURE_MANAGED_TENANTS": "<managed-tenant-1>,<managed-tenant-2>"
+   "ENABLE_AUTO_TENANT_DISCOVERY": "true"
+   ```
+
+3. No explicit list of managed tenants is required - the system will dynamically validate any tenant:
+   - Users will automatically have access to resources in any tenant where they have delegated permissions via Azure Lighthouse
+   - Token validation is performed using standard OAuth 2.0 JWT validation
+   - All operations use the On-Behalf-Of flow to preserve the user's identity across requests
    ```
 
 ### CLI Multi-Tenant Configuration
@@ -198,8 +204,8 @@ Update your CLI client's `.env` file to include:
 # Multi-tenant configuration
 MULTI_TENANT_ENABLED=true
 AZURE_HOME_TENANT_ID=your-home-tenant-id
-# Comma-separated list of tenant IDs for cross-tenant access
-AZURE_MANAGED_TENANTS=managed-tenant-1,managed-tenant-2
+# Enable dynamic tenant discovery - automatically detects tenants user has access to
+ENABLE_AUTO_TENANT_DISCOVERY=true
 ```
 
 ## Azure Key Vault Integration
@@ -231,4 +237,4 @@ For production deployments, store sensitive configuration in Azure Key Vault:
    az functionapp config appsettings set --name <function-app-name> --resource-group <resource-group> --settings "USE_KEY_VAULT=true" "KEY_VAULT_NAME=<keyvault-name>"
    ```
 
-The function app will automatically retrieve secrets from Key Vault using its managed identity.
+The function app will automatically retrieve secrets from Key Vault using its managed identity (only during startup/initialization).
