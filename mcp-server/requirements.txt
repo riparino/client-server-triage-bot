@@ -1,6 +1,6 @@
 # Azure Function MCP Server Requirements
 azure-functions==1.17.0
-azure-core==1.28.0
+azure-core==1.38.0
 azure-identity==1.16.1  # Make sure we have the version with robust OBO support
 azure-mgmt-securityinsight==1.0.0
 azure-mgmt-security==3.0.0
